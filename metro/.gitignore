@@ -1,0 +1,11 @@
+.vscode/
+venv/
+__pycache__/
+
+data/bronze/*
+data/silver/*
+data/gold/*
+
+blog/
+
+.env
