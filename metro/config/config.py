@@ -1,7 +1,3 @@
-"""
-Configuration for the project.
-"""
-
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -11,12 +7,16 @@ config_dir = Path(__file__).parent
 env_file = config_dir / ".env"
 load_dotenv(env_file)
 
+"""
+Configuration for the project.
+"""
+
 
 class Config:
     # Project paths
     PROJECT_ROOT = Path(__file__).parent.parent
     DATA_ROOT = PROJECT_ROOT / "data"
-    BRONZE_DATA_PATH = DATA_ROOT / "raw"
+    BRONZE_DATA_PATH = DATA_ROOT / "bronze"
     SILVER_DATA_PATH = DATA_ROOT / "silver"
     GOLD_DATA_PATH = DATA_ROOT / "gold"
     LOGS_PATH = PROJECT_ROOT / "logs"

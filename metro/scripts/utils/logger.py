@@ -1,17 +1,20 @@
 import logging
 
-logger = logging.getLogger(__name__)
+"""
+Shows logging messages
+"""
 
 
 class Logger:
     def __init__(self):
         logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger(__name__)
 
     def info(self, message):
-        logger.info(message)
+        self.logger.info(message)
 
     def error(self, message):
-        logger.error(message)
+        self.logger.error(message)
 
     def debug(self, message):
-        logger.debug(message)
+        self.logger.debug(message)
