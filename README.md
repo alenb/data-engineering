@@ -40,4 +40,9 @@ The Metro project is my hands-on exploration of public transit data. Here, I’v
 
 ---
 
+## Connect with Me
+
+- Visit my [LinkedIn profile](https://www.linkedin.com/in/alen-birindzic-046a0467/)
+- Check out my other projects on my [GitHub Profile](https://github.com/alenb/data-portfolio/)
+
 Thanks again for visiting. I'll keep updating this as I grow, so check back for new projects, stories, and maybe a few lessons learned the hard way.
