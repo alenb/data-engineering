@@ -7,6 +7,8 @@ from scripts.utils.logger import Logger
 """
 Base class for all processing layers.
 """
+
+
 class Base:
     def __init__(self):
         self.logger = Logger()
@@ -16,6 +18,7 @@ class Base:
     """
     Create a Spark session.
     """
+
     def create_spark(self):
         self.logger.info("Starting Spark session")
         builder = (

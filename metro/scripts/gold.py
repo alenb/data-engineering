@@ -1,15 +1,5 @@
-from base import Base
-from pyspark.sql.functions import (
-    col,
-    date_format,
-    concat,
-    format_string,
-    lit,
-    when,
-    concat_ws,
-    hash as spark_hash,
-    abs as spark_abs,
-)
+from scripts.base import Base
+from pyspark.sql import functions as F
 
 """
 Gold layer for business intelligence.
@@ -27,6 +17,7 @@ class Gold(Base):
         self.dim_station = None
         self.dim_line = None
         self.dim_direction = None
+        self.dim_mode = None
         self.fact_train = None
 
     """
@@ -34,6 +25,7 @@ class Gold(Base):
     """
 
     def run(self):
+        self.create_spark()
         self.load_data()
         self.create_dim_date()
         self.create_dim_time_bucket()
@@ -41,6 +33,7 @@ class Gold(Base):
         self.create_dim_station()
         self.create_dim_line()
         self.create_dim_direction()
+        self.create_dim_mode()
         self.create_fact_train()
         self.process()
 
@@ -66,7 +59,8 @@ class Gold(Base):
             )
             .distinct()
             .withColumn(
-                "Date_Key", date_format(col("Business_Date"), "yyyyMMdd").cast("int")
+                "Date_Key",
+                F.date_format(F.col("Business_Date"), "yyyyMMdd").cast("int"),
             )
             .select(
                 "Date_Key",
@@ -89,31 +83,31 @@ class Gold(Base):
         arrival_buckets = (
             self.df.select("Arrival_Time_Bucket")
             .distinct()
-            .filter(col("Arrival_Time_Bucket").isNotNull())
+            .filter(F.col("Arrival_Time_Bucket").isNotNull())
         )
         departure_buckets = (
             self.df.select("Departure_Time_Bucket")
             .distinct()
-            .filter(col("Departure_Time_Bucket").isNotNull())
+            .filter(F.col("Departure_Time_Bucket").isNotNull())
         )
         all_buckets = arrival_buckets.union(departure_buckets).distinct()
         self.dim_time_bucket = (
             all_buckets.withColumnRenamed("Arrival_Time_Bucket", "Time_Bucket")
-            .withColumn("Time_Bucket_Key", col("Time_Bucket").cast("int"))
+            .withColumn("Time_Bucket_Key", F.col("Time_Bucket").cast("int"))
             .withColumn(
                 "Time_Range_Description",
-                concat(
-                    format_string(
+                F.concat(
+                    F.format_string(
                         "%02d:%02d",
-                        (col("Time_Bucket") / 60).cast("int"),
-                        (col("Time_Bucket") % 60).cast("int"),
+                        (F.col("Time_Bucket") / 60).cast("int"),
+                        (F.col("Time_Bucket") % 60).cast("int"),
                     ),
-                    lit(" - "),
-                    format_string(
+                    F.lit(" - "),
+                    F.format_string(
                         "%02d:%02d",
-                        (col("Time_Bucket") / 60).cast("int"),
-                        ((col("Time_Bucket") + 29) / 60).cast("int"),
-                        ((col("Time_Bucket") + 29) % 60).cast("int"),
+                        (F.col("Time_Bucket") / 60).cast("int"),
+                        ((F.col("Time_Bucket") + 29) / 60).cast("int"),
+                        ((F.col("Time_Bucket") + 29) % 60).cast("int"),
                     ),
                 ),
             )
@@ -140,9 +134,7 @@ class Gold(Base):
             .distinct()
             .withColumn(
                 "Train_Key",
-                spark_abs(
-                    spark_hash(concat_ws("||", col("Train_Number"), col("Mode")))
-                ),
+                F.abs(F.hash(F.concat_ws("||", F.col("Train_Number"), F.col("Mode")))),
             )
             .select(
                 "Train_Key",
@@ -171,7 +163,7 @@ class Gold(Base):
                 "Station_Chainage",
             )
             .distinct()
-            .withColumn("Station_Key", spark_abs(spark_hash(col("Station_Name"))))
+            .withColumn("Station_Key", F.abs(F.hash(F.col("Station_Name"))))
             .select(
                 "Station_Key",
                 "Station_Name",
@@ -191,7 +183,7 @@ class Gold(Base):
         self.dim_line = (
             self.df.select("Line_Name", "Group")
             .distinct()
-            .withColumn("Line_Key", spark_abs(spark_hash(col("Line_Name"))))
+            .withColumn("Line_Key", F.abs(F.hash(F.col("Line_Name"))))
             .select(
                 "Line_Key",
                 "Line_Name",
@@ -209,15 +201,15 @@ class Gold(Base):
         self.dim_direction = (
             self.df.select("Direction")
             .distinct()
-            .withColumn("Direction_Key", spark_abs(spark_hash(col("Direction"))))
+            .withColumn("Direction_Key", F.abs(F.hash(F.col("Direction"))))
             .withColumn(
                 "Direction_Description",
-                when(
-                    col("Direction") == "U",
+                F.when(
+                    F.col("Direction") == "U",
                     "Travelling towards Flinders Street Station",
                 )
-                .when(
-                    col("Direction") == "D",
+                .F.when(
+                    F.col("Direction") == "D",
                     "Travelling away from Flinders Street Station",
                 )
                 .otherwise("Unknown Direction"),
@@ -235,7 +227,7 @@ class Gold(Base):
         self.dim_mode = (
             self.df.select("Mode")
             .distinct()
-            .withColumn("Mode_Key", spark_abs(spark_hash(col("Mode"))))
+            .withColumn("Mode_Key", F.abs(F.hash(F.col("Mode"))))
             .select("Mode_Key", "Mode")
             .orderBy("Mode")
         )
@@ -253,18 +245,18 @@ class Gold(Base):
         )
         fact_df = fact_df.join(
             self.dim_time_bucket.select(
-                col("Time_Bucket_Key").alias("Arrival_Time_Bucket_Key"),
-                col("Time_Bucket").alias("Arrival_Time_Bucket_DTB"),
+                F.col("Time_Bucket_Key").alias("Arrival_Time_Bucket_Key"),
+                F.col("Time_Bucket").alias("Arrival_Time_Bucket_DTB"),
             ),
-            fact_df["Arrival_Time_Bucket"] == col("Arrival_Time_Bucket_DTB"),
+            fact_df["Arrival_Time_Bucket"] == F.col("Arrival_Time_Bucket_DTB"),
             how="left",
         )
         fact_df = fact_df.join(
             self.dim_time_bucket.select(
-                col("Time_Bucket_Key").alias("Departure_Time_Bucket_Key"),
-                col("Time_Bucket").alias("Departure_Time_Bucket_DTB"),
+                F.col("Time_Bucket_Key").alias("Departure_Time_Bucket_Key"),
+                F.col("Time_Bucket").alias("Departure_Time_Bucket_DTB"),
             ),
-            fact_df["Departure_Time_Bucket"] == col("Departure_Time_Bucket_DTB"),
+            fact_df["Departure_Time_Bucket"] == F.col("Departure_Time_Bucket_DTB"),
             how="left",
         )
         fact_df = fact_df.join(
@@ -308,14 +300,14 @@ class Gold(Base):
             )
             .withColumn(
                 "Fact_ID",
-                spark_abs(
-                    spark_hash(
-                        concat_ws(
+                F.abs(
+                    F.hash(
+                        F.concat_ws(
                             "||",
-                            col("Date_Key"),
-                            col("Train_Key"),
-                            col("Station_Key"),
-                            col("Stop_Sequence_Number"),
+                            F.col("Date_Key"),
+                            F.col("Train_Key"),
+                            F.col("Station_Key"),
+                            F.col("Stop_Sequence_Number"),
                         )
                     )
                 ),

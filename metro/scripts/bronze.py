@@ -1,5 +1,5 @@
 import requests
-from base import Base
+from scripts.base import Base
 
 """
 Bronze layer for raw data ingestion.

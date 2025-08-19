@@ -1,16 +1,6 @@
-from base import Base
+from scripts.base import Base
 from pyspark.sql.window import Window
-from pyspark.sql.functions import (
-    col,
-    when,
-    coalesce,
-    lag,
-    date_format,
-    expr,
-    year,
-    month,
-    dayofmonth,
-)
+from pyspark.sql import functions as F
 
 """
 Silver layer for processing train patronage data.
@@ -21,7 +11,6 @@ This script processes the data from the Bronze layer, cleaning and transforming 
 class Silver(Base):
     def __init__(self):
         super().__init__()
-        self.train_patron = None
         self.df = None
 
     """
@@ -29,8 +18,10 @@ class Silver(Base):
     """
 
     def run(self):
+        self.create_spark()
         self.load_data()
         self.clean_negative_passenger_counts()
+        self.fix_arrival_departure_times()
         self.extract_time_of_day_info()
         self.fill_group_with_line_name()
         self.add_derived_date_parts()
@@ -43,7 +34,7 @@ class Silver(Base):
 
     def load_data(self):
         self.logger.info("Loading train patronage data")
-        self.train_patron = self.spark.read.csv(
+        self.df = self.spark.read.csv(
             f"{self.config.BRONZE_DATA_PATH}/train_patrons.csv",
             header=True,
             inferSchema=True,
@@ -56,30 +47,62 @@ class Silver(Base):
     def clean_negative_passenger_counts(self):
         self.logger.info("Cleaning negative counts")
         self.df = (
-            self.train_patron.withColumn(
+            self.df.withColumn(
                 "Passenger_Boardings",
-                when(col("Passenger_Boardings") < 0, None).otherwise(
-                    col("Passenger_Boardings")
+                F.when(F.col("Passenger_Boardings") < 0, None).otherwise(
+                    F.col("Passenger_Boardings")
                 ),
             )
             .withColumn(
                 "Passenger_Alightings",
-                when(col("Passenger_Alightings") < 0, None).otherwise(
-                    col("Passenger_Alightings")
+                F.when(F.col("Passenger_Alightings") < 0, None).otherwise(
+                    F.col("Passenger_Alightings")
                 ),
             )
             .withColumn(
                 "Passenger_Arrival_Load",
-                when(col("Passenger_Arrival_Load") < 0, None).otherwise(
-                    col("Passenger_Arrival_Load")
+                F.when(F.col("Passenger_Arrival_Load") < 0, None).otherwise(
+                    F.col("Passenger_Arrival_Load")
                 ),
             )
             .withColumn(
                 "Passenger_Departure_Load",
-                when(col("Passenger_Departure_Load") < 0, None).otherwise(
-                    col("Passenger_Departure_Load")
+                F.when(F.col("Passenger_Departure_Load") < 0, None).otherwise(
+                    F.col("Passenger_Departure_Load")
                 ),
             )
+        )
+
+    """
+    Fix arrival and departure times by combining `Business_Date` and time columns.
+    """
+
+    def fix_arrival_departure_times(self):
+        self.logger.info("Fixing arrival and departure times")
+        self.df = (
+            self.df.withColumn(
+                "Arrival_Timestamp",
+                F.to_timestamp(
+                    F.concat_ws(
+                        " ",
+                        F.col("Business_Date"),
+                        F.date_format(F.col("Arrival_Time_Scheduled"), "HH:mm:ss"),
+                    )
+                ),
+            )
+            .withColumn(
+                "Departure_Timestamp",
+                F.to_timestamp(
+                    F.concat_ws(
+                        " ",
+                        F.col("Business_Date"),
+                        F.date_format(F.col("Departure_Time_Scheduled"), "HH:mm:ss"),
+                    )
+                ),
+            )
+            .drop("Arrival_Time_Scheduled", "Departure_Time_Scheduled")
+            .withColumnRenamed("Arrival_Timestamp", "Arrival_Time_Scheduled")
+            .withColumnRenamed("Departure_Timestamp", "Departure_Time_Scheduled")
         )
 
     """
@@ -89,22 +112,23 @@ class Silver(Base):
     def extract_time_of_day_info(self):
         self.logger.info("Extracting time-of-day information")
         self.df = (
-            self.train_patron.withColumn(
-                "Arrival_Time", date_format(col("Arrival_Time_Scheduled"), "HH:mm:ss")
+            self.df.withColumn(
+                "Arrival_Time",
+                F.date_format(F.col("Arrival_Time_Scheduled"), "HH:mm:ss"),
             )
             .withColumn(
                 "Departure_Time",
-                date_format(col("Departure_Time_Scheduled"), "HH:mm:ss"),
+                F.date_format(F.col("Departure_Time_Scheduled"), "HH:mm:ss"),
             )
             .withColumn(
                 "Arrival_Time_Bucket",
-                expr(
+                F.expr(
                     "floor((hour(Arrival_Time_Scheduled) * 60 + minute(Arrival_Time_Scheduled)) / 30) * 30"
                 ),
             )
             .withColumn(
                 "Departure_Time_Bucket",
-                expr(
+                F.expr(
                     "floor((hour(Departure_Time_Scheduled) * 60 + minute(Departure_Time_Scheduled)) / 30) * 30"
                 ),
             )
@@ -118,10 +142,10 @@ class Silver(Base):
         self.logger.info("Filling Group with Line_Name where Group is null")
         self.df = self.df.withColumn(
             "Group",
-            when(
-                (col("Group").isNull()) & (col("Line_Name").isNotNull()),
-                col("Line_Name"),
-            ).otherwise(col("Group")),
+            F.when(
+                (F.col("Group").isNull()) & (F.col("Line_Name").isNotNull()),
+                F.col("Line_Name"),
+            ).otherwise(F.col("Group")),
         )
 
     """
@@ -131,9 +155,9 @@ class Silver(Base):
     def add_derived_date_parts(self):
         self.logger.info("Adding derived date parts for partitioning and analysis")
         self.df = (
-            self.df.withColumn("year", year(col("Business_Date")))
-            .withColumn("month", month(col("Business_Date")))
-            .withColumn("day", dayofmonth(col("Business_Date")))
+            self.df.withColumn("year", F.year(F.col("Business_Date")))
+            .withColumn("month", F.month(F.col("Business_Date")))
+            .withColumn("day", F.dayofmonth(F.col("Business_Date")))
         )
 
     """
@@ -156,9 +180,9 @@ class Silver(Base):
         ).orderBy("Stop_Sequence_Number")
 
         for col_name in passenger_columns:
-            prev_col = lag(col(col_name)).over(window_spec)
+            prev_col = F.lag(F.col(col_name)).over(window_spec)
             self.df = self.df.withColumn(
-                f"{col_name}_filled", coalesce(col(col_name), prev_col)
+                f"{col_name}_filled", F.coalesce(F.col(col_name), prev_col)
             )
 
         for col_name in passenger_columns:
@@ -171,26 +195,26 @@ class Silver(Base):
         )
         self.df = self.df.withColumn(
             "Passenger_Boardings",
-            when(
-                (col("Stop_Sequence_Number") == 1)
-                & (col("Passenger_Boardings").isNull()),
-                col("Passenger_Alightings"),
-            ).otherwise(col("Passenger_Boardings")),
+            F.when(
+                (F.col("Stop_Sequence_Number") == 1)
+                & (F.col("Passenger_Boardings").isNull()),
+                F.col("Passenger_Alightings"),
+            ).otherwise(F.col("Passenger_Boardings")),
         ).withColumn(
             "Passenger_Departure_Load",
-            when(
-                (col("Stop_Sequence_Number") == 1)
-                & (col("Passenger_Departure_Load").isNull()),
-                col("Passenger_Arrival_Load"),
-            ).otherwise(col("Passenger_Departure_Load")),
+            F.when(
+                (F.col("Stop_Sequence_Number") == 1)
+                & (F.col("Passenger_Departure_Load").isNull()),
+                F.col("Passenger_Arrival_Load"),
+            ).otherwise(F.col("Passenger_Departure_Load")),
         )
 
         self.df = self.df.withColumn(
             "Group",
-            when(
-                (col("Line_Name") == "Stony Point") & (col("Group").isNull()),
+            F.when(
+                (F.col("Line_Name") == "Stony Point") & (F.col("Group").isNull()),
                 "Stony Point",
-            ).otherwise(col("Group")),
+            ).otherwise(F.col("Group")),
         )
 
     """
