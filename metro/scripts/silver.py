@@ -1,23 +1,24 @@
+"""
+Silver Layer - Data Cleaning and Transformation
+
+This module processes data from the Bronze layer, performing data cleaning,
+validation, and structural transformations to prepare it for business analysis.
+"""
+
 from scripts.base import Base
 from pyspark.sql.window import Window
 from pyspark.sql import functions as F
 
-"""
-Silver layer for processing train patronage data.
-This script processes the data from the Bronze layer, cleaning and transforming it.
-"""
-
 
 class Silver(Base):
+    """Silver layer processor for data cleaning and transformation."""
+
     def __init__(self):
         super().__init__()
         self.df = None
 
-    """
-    Run the Silver layer processing.
-    """
-
-    def run(self):
+    def run(self) -> None:
+        """Execute the complete Silver layer processing pipeline."""
         self.logger.info("Running Silver layer")
         self.create_spark()
         self.load_data()
@@ -29,11 +30,8 @@ class Silver(Base):
         self.fill_missing_passenger_values()
         self.process()
 
-    """
-    Load train patronage data from the Bronze layer.
-    """
-
-    def load_data(self):
+    def load_data(self) -> None:
+        """Load train patronage data from the Bronze layer."""
         self.logger.info("Loading train patronage data")
         self.df = self.spark.read.csv(
             f"{self.config.BRONZE_DATA_PATH}/train_patrons.csv",
@@ -41,11 +39,8 @@ class Silver(Base):
             inferSchema=True,
         )
 
-    """
-    Clean negative passenger counts by replacing them with null.
-    """
-
-    def clean_negative_passenger_counts(self):
+    def clean_negative_passenger_counts(self) -> None:
+        """Replace negative passenger counts with null values for data quality."""
         self.logger.info("Cleaning negative counts")
         self.df = (
             self.df.withColumn(
@@ -74,11 +69,13 @@ class Silver(Base):
             )
         )
 
-    """
-    Fix arrival and departure times by combining `Business_Date` and time columns.
-    """
+    def fix_arrival_departure_times(self) -> None:
+        """
+        Combine Business_Date with time columns to create proper timestamps.
 
-    def fix_arrival_departure_times(self):
+        Creates unified timestamp columns by concatenating the business date
+        with the scheduled arrival and departure times.
+        """
         self.logger.info("Fixing arrival and departure times")
         self.df = (
             self.df.withColumn(
@@ -106,11 +103,13 @@ class Silver(Base):
             .withColumnRenamed("Departure_Timestamp", "Departure_Time_Scheduled")
         )
 
-    """
-    Extract time-of-day information from the train patronage data, and create time buckets.
-    """
+    def extract_time_of_day_info(self) -> None:
+        """
+        Extract time-of-day information and create 30-minute time buckets.
 
-    def extract_time_of_day_info(self):
+        Adds time columns and creates time buckets for analysis of
+        passenger patterns throughout the day.
+        """
         self.logger.info("Extracting time-of-day information")
         self.df = (
             self.df.withColumn(
@@ -135,11 +134,8 @@ class Silver(Base):
             )
         )
 
-    """
-    Fill Group with Line_Name where Group is null.
-    """
-
-    def fill_group_with_line_name(self):
+    def fill_group_with_line_name(self) -> None:
+        """Fill missing Group values with Line_Name where possible."""
         self.logger.info("Filling Group with Line_Name where Group is null")
         self.df = self.df.withColumn(
             "Group",
@@ -149,11 +145,8 @@ class Silver(Base):
             ).otherwise(F.col("Group")),
         )
 
-    """
-    Add derived date parts for partitioning and analysis.
-    """
-
-    def add_derived_date_parts(self):
+    def add_derived_date_parts(self) -> None:
+        """Add year, month, and day columns for data partitioning."""
         self.logger.info("Adding derived date parts for partitioning and analysis")
         self.df = (
             self.df.withColumn("year", F.year(F.col("Business_Date")))
@@ -161,11 +154,13 @@ class Silver(Base):
             .withColumn("day", F.dayofmonth(F.col("Business_Date")))
         )
 
-    """
-    Fill missing passenger values by carrying forward the last observation or using the next valid observation.
-    """
+    def fill_missing_passenger_values(self) -> None:
+        """
+        Fill missing passenger values using forward fill and business logic.
 
-    def fill_missing_passenger_values(self):
+        Uses window functions to carry forward last known values within
+        train sequences and applies business rules for specific scenarios.
+        """
         self.logger.info(
             "Finding previous values for passenger columns within the sequence to fill missing values"
         )
@@ -218,12 +213,8 @@ class Silver(Base):
             ).otherwise(F.col("Group")),
         )
 
-    """
-    Process the DataFrame and store the results in Delta format.
-    """
-
-    def process(self):
-        # Store the silver table as delta partitioned by year/month/day
+    def process(self) -> None:
+        """Save the processed DataFrame as Delta format with partitioning."""
         self.logger.info(
             "Storing the silver table as delta partitioned by year/month/day"
         )
@@ -234,5 +225,4 @@ class Silver(Base):
             f"Processing completed successfully: {self.config.SILVER_DATA_PATH}/train_patrons"
         )
 
-        # Stop the Spark session
         self.spark.stop()

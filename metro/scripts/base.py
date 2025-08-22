@@ -1,25 +1,27 @@
+"""
+Base class for all data processing layers.
+
+This module provides common functionality for Bronze, Silver, and Gold layer processing,
+including Spark session management and file download capabilities.
+"""
+
 import subprocess
 from delta import configure_spark_with_delta_pip
 from pyspark.sql import SparkSession
 from config.config import Config
 from scripts.utils.logger import Logger
 
-"""
-Base class for all processing layers.
-"""
-
 
 class Base:
+    """Base class providing common functionality for all processing layers."""
+
     def __init__(self):
         self.logger = Logger()
         self.config = Config()
         self.spark = None
 
-    """
-    Create a Spark session.
-    """
-
-    def create_spark(self):
+    def create_spark(self) -> None:
+        """Create and configure a Spark session with Delta Lake support."""
         self.logger.info("Starting Spark session")
         builder = (
             SparkSession.builder.config(
@@ -35,50 +37,50 @@ class Base:
             .config("spark.memory.fraction", "0.6")
             .config("spark.memory.storageFraction", "0.5")
         )
-        # Configure Spark with Delta Lake
         self.spark = configure_spark_with_delta_pip(builder).getOrCreate()
 
-    """
-    Download a file from a URL.
-    """
+    def download(self, url: str, filename: str) -> None:
+        """
+        Download a file from a URL using aria2 for robust large file downloads.
 
-    def download(self, url, filename):
+        Args:
+            url: The URL to download from
+            filename: The local filename to save as
+        """
         """Download using aria2 - the most robust downloader for large files"""
         self.config.BRONZE_DATA_PATH.mkdir(parents=True, exist_ok=True)
 
-        # aria2 command with maximum reliability settings
         cmd = [
             "aria2c",
-            "--continue=true",  # Resume downloads
-            "--max-tries=0",  # Infinite retries
-            "--retry-wait=10",  # Wait 10 seconds between retries
-            "--timeout=60",  # 60 second timeout per connection
-            "--max-connection-per-server=4",  # 4 connections to server
-            "--split=4",  # Split into 4 segments
-            "--min-split-size=50M",  # Minimum 50MB per segment
-            "--max-download-limit=0",  # No speed limit
-            "--file-allocation=prealloc",  # Pre-allocate file space
-            "--check-integrity=true",  # Verify download integrity
-            "--auto-file-renaming=false",  # Don't rename if file exists
-            "--allow-overwrite=true",  # Overwrite existing files
+            "--continue=true",
+            "--max-tries=0",
+            "--retry-wait=10",
+            "--timeout=60",
+            "--max-connection-per-server=4",
+            "--split=4",
+            "--min-split-size=50M",
+            "--max-download-limit=0",
+            "--file-allocation=prealloc",
+            "--check-integrity=true",
+            "--auto-file-renaming=false",
+            "--allow-overwrite=true",
             "--dir",
             str(self.config.BRONZE_DATA_PATH),
             "--out",
             filename,
             "--log-level=info",
-            "--summary-interval=10",  # Progress every 10 seconds
+            "--summary-interval=10",
             url,
         ]
 
         try:
             self.logger.info(f"Starting aria2 download: {' '.join(cmd)}")
 
-            # Run aria2 and capture output
             process = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                check=False,  # Don't raise on non-zero exit
+                check=False,
             )
 
             if process.returncode == 0:

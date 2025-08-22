@@ -1,3 +1,14 @@
+"""
+Bronze Layer DAG - Train Patronage Data Pipeline
+
+This DAG orchestrates the Bronze layer of the train patronage data pipeline,
+handling raw data ingestion from the DataVic API on a yearly schedule.
+Triggers the Silver layer DAG upon successful completion.
+
+Schedule: Yearly (@yearly)
+Tags: bronze, yearly, train patrons
+"""
+
 import os
 from datetime import datetime
 from airflow import DAG
@@ -6,8 +17,8 @@ from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from scripts.bronze import Bronze
 
 
-# Define the function to run the Bronze ETL process
-def run_bronze_python():
+def run_bronze_python() -> None:
+    """Execute the Bronze layer ETL process for train patronage data."""
     bronze = Bronze()
     bronze.run()
 
@@ -29,7 +40,8 @@ with DAG(
 ) as dag:
 
     bronze_task = PythonOperator(
-        task_id="run_bronze_task", python_callable=run_bronze_python
+        task_id="run_bronze_task", 
+        python_callable=run_bronze_python
     )
 
     trigger_silver = TriggerDagRunOperator(

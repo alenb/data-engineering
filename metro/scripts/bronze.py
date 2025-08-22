@@ -1,29 +1,33 @@
+"""
+Bronze Layer - Raw Data Ingestion
+
+This module handles the Bronze layer of the data pipeline, responsible for
+ingesting raw train patronage data from the DataVic API and storing it
+in its natural format for further processing.
+"""
+
 import requests
 from scripts.base import Base
 
-"""
-Bronze layer for raw data ingestion.
-This layer is responsible for loading raw data and storing it in its natural format.
-"""
-
 
 class Bronze(Base):
+    """Bronze layer processor for raw data ingestion."""
+
     def __init__(self):
         super().__init__()
 
-    """
-    Run the Bronze layer processing.
-    """
-
-    def run(self):
+    def run(self) -> None:
+        """Execute the Bronze layer processing pipeline."""
         self.logger.info("Running Bronze layer")
         self.get_train_patronage()
 
-    """
-    Get train patronage data from the Datavic API.
-    """
+    def get_train_patronage(self) -> None:
+        """
+        Retrieve train patronage data from the DataVic API.
 
-    def get_train_patronage(self):
+        Fetches metadata about the train patronage dataset and downloads
+        the actual data file to the bronze data directory.
+        """
         endpoint = f"{self.config.DATAVIC_BASE_URL}/resource_show?id=162887ef-1dba-4d9b-83bd-baee229229c6"
         headers = {"accept": "application/json", "apikey": self.config.DATAVIC_API_KEY}
 

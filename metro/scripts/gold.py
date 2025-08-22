@@ -1,13 +1,17 @@
+"""
+Gold Layer - Business Intelligence and Star Schema
+
+This module creates a dimensional data model (star schema) from the Silver layer data,
+generating fact and dimension tables optimized for business intelligence and reporting.
+"""
+
 from scripts.base import Base
 from pyspark.sql import functions as F
 
-"""
-Gold layer for business intelligence.
-This layer aggregates and transforms data from the silver layer to create a unified view for reporting and analysis.
-"""
-
 
 class Gold(Base):
+    """Gold layer processor for creating star schema dimensional model."""
+
     def __init__(self):
         super().__init__()
         self.df = None
@@ -20,11 +24,8 @@ class Gold(Base):
         self.dim_mode = None
         self.fact_train = None
 
-    """
-    Run the Gold layer processing.
-    """
-
-    def run(self):
+    def run(self) -> None:
+        """Execute the complete Gold layer processing pipeline."""
         self.logger.info("Running Gold layer")
         self.create_spark()
         self.load_data()
@@ -38,21 +39,15 @@ class Gold(Base):
         self.create_fact_train()
         self.process()
 
-    """
-    Load train patronage data from the Silver layer.
-    """
-
-    def load_data(self):
+    def load_data(self) -> None:
+        """Load processed data from the Silver layer."""
         self.logger.info("Loading train patronage data")
         self.df = self.spark.read.format("delta").load(
             f"{self.config.SILVER_DATA_PATH}/train_patrons"
         )
 
-    """
-    Create the date dimension.
-    """
-
-    def create_dim_date(self):
+    def create_dim_date(self) -> None:
+        """Create the date dimension table with calendar attributes."""
         self.logger.info("Create dim_date")
         self.dim_date = (
             self.df.select(
@@ -75,9 +70,8 @@ class Gold(Base):
             .orderBy("Business_Date")
         )
 
-    """
-    Create the time bucket dimension.
-    """
+    def create_dim_time_bucket(self) -> None:
+        """Create the time bucket dimension for 30-minute intervals."""
 
     def create_dim_time_bucket(self):
         self.logger.info("Create dim_time_bucket")
@@ -116,11 +110,8 @@ class Gold(Base):
             .orderBy("Time_Bucket")
         )
 
-    """
-    Create the train dimension.
-    """
-
-    def create_dim_train(self):
+    def create_dim_train(self) -> None:
+        """Create the train dimension with unique train attributes."""
         self.logger.info("Create dim_train")
         self.dim_train = (
             self.df.select(
@@ -150,11 +141,8 @@ class Gold(Base):
             .orderBy("Train_Number")
         )
 
-    """
-    Create the station dimension.
-    """
-
-    def create_dim_station(self):
+    def create_dim_station(self) -> None:
+        """Create the station dimension with geographic information."""
         self.logger.info("Create dim_station")
         self.dim_station = (
             self.df.select(
@@ -175,11 +163,8 @@ class Gold(Base):
             .orderBy("Station_Name")
         )
 
-    """
-    Create the line dimension.
-    """
-
-    def create_dim_line(self):
+    def create_dim_line(self) -> None:
+        """Create the line dimension with railway line information."""
         self.logger.info("Create dim_line")
         self.dim_line = (
             self.df.select("Line_Name", "Group")
@@ -193,11 +178,8 @@ class Gold(Base):
             .orderBy("Line_Name")
         )
 
-    """
-    Create the direction dimension.
-    """
-
-    def create_dim_direction(self):
+    def create_dim_direction(self) -> None:
+        """Create the direction dimension with descriptive labels."""
         self.logger.info("Create dim_direction")
         self.dim_direction = (
             self.df.select("Direction")
@@ -219,11 +201,8 @@ class Gold(Base):
             .orderBy("Direction")
         )
 
-    """
-    Create the mode dimension.
-    """
-
-    def create_dim_mode(self):
+    def create_dim_mode(self) -> None:
+        """Create the mode dimension for transport types."""
         self.logger.info("Create dim_mode")
         self.dim_mode = (
             self.df.select("Mode")
@@ -233,11 +212,8 @@ class Gold(Base):
             .orderBy("Mode")
         )
 
-    """
-    Create the fact_train table.
-    """
-
-    def create_fact_train(self):
+    def create_fact_train(self) -> None:
+        """Create the central fact table with foreign keys to all dimensions."""
         self.logger.info("Create fact_train")
         fact_df = self.df.join(
             self.dim_date.select("Date_Key", "Business_Date"),
@@ -334,11 +310,8 @@ class Gold(Base):
             .orderBy("Date_Key", "Train_Key", "Station_Key", "Stop_Sequence_Number")
         )
 
-    """
-    Process the DataFrame and store the results in Delta format.
-    """
-
-    def process(self):
+    def process(self) -> None:
+        """Save all dimension and fact tables as Delta format."""
         self.logger.info("Saving gold data")
         self.dim_date.write.format("delta").mode("overwrite").save(
             f"{self.config.GOLD_DATA_PATH}/dim_date"
@@ -365,5 +338,4 @@ class Gold(Base):
             f"{self.config.GOLD_DATA_PATH}/fact_train"
         )
 
-        # Stop the Spark session
         self.spark.stop()

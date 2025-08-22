@@ -1,7 +1,14 @@
 #!/bin/bash
+# ------------------------------------------------------------------------------
+# Script Name: run_airflow.sh
+# Purpose: Starts Airflow webserver and scheduler locally.
+# Usage: bash run_airflow.sh
+# ------------------------------------------------------------------------------
 set -euo pipefail
 
-# --- Activate venv ---
+# =========================
+# Activate virtual environment
+# =========================
 if [[ -d "venv-airflow" ]]; then
   echo "Activating virtualenv..."
   source venv-airflow/bin/activate
@@ -9,12 +16,16 @@ else
   echo "venv-airflow not found"; exit 1
 fi
 
-# --- Paths ---
+# =========================
+# Configuration
+# =========================
 AIRFLOW_HOME="${AIRFLOW_HOME:-$PWD/airflow}"
 LOG_DIR="$AIRFLOW_HOME/logs/daemon"
 mkdir -p "$LOG_DIR"
 
-# --- Create default admin user if it doesn't exist ---
+# =========================
+# Create default admin user (optional)
+# =========================
 # echo "Checking if admin user exists..."
 # if ! airflow users list | grep -q "admin"; then
 #     echo "Creating default admin user..."
@@ -30,7 +41,9 @@ mkdir -p "$LOG_DIR"
 #     echo "Admin user already exists"
 # fi
 
-# --- Start services ---
+# =========================
+# Start Airflow services
+# =========================
 echo "Starting API server (with single worker)..."
 nohup airflow api-server --host 0.0.0.0 --port 8888 --workers 1 \
   >"$LOG_DIR/api-server.out" 2>"$LOG_DIR/api-server.err" & echo $! > "$AIRFLOW_HOME/api-server.pid"
@@ -53,7 +66,9 @@ echo "Starting Triggerer..."
 nohup airflow triggerer \
   >"$LOG_DIR/triggerer.out" 2>"$LOG_DIR/triggerer.err" & echo $! > "$AIRFLOW_HOME/triggerer.pid"
 
-# --- Report status ---
+# =========================
+# Report status
+# =========================
 sleep 3
 echo "PIDs:"
 echo "  api-server:     $(cat "$AIRFLOW_HOME/api-server.pid" 2>/dev/null || echo 'n/a')"

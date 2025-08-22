@@ -1,4 +1,9 @@
 #!/bin/bash
+# ------------------------------------------------------------------------------
+# Script Name: run_docker_airflow.sh
+# Purpose: Starts Airflow services using Docker Compose.
+# Usage: bash run_docker_airflow.sh
+# ------------------------------------------------------------------------------
 set -e
 
 # =========================

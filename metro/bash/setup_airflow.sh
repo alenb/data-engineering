@@ -1,7 +1,14 @@
 #!/bin/bash
+# ------------------------------------------------------------------------------
+# Script Name: setup_airflow.sh
+# Purpose: Installs dependencies and initializes Airflow locally.
+# Usage: bash setup_airflow.sh
+# ------------------------------------------------------------------------------
 set -e
 
-# === CONFIG ===
+# =========================
+# Configuration
+# =========================
 VENV_DIR="venv-airflow"
 PROJECT_DIR="$(pwd)"
 # Change to the correct path
@@ -11,7 +18,9 @@ DAGS_DIR="${PROJECT_DIR}/dags"
 AIRFLOW_YAML="${PROJECT_DIR}/airflow.yaml"
 AIRFLOW_VERSION="3.0.4"
 
-# === Create virtual environment if missing ===
+# =========================
+# Create virtual environment
+# =========================
 if [ ! -d "$VENV_DIR" ]; then
     python -m venv "$VENV_DIR"
     echo "Created virtual environment at $VENV_DIR"
@@ -19,13 +28,19 @@ else
     echo "Virtual environment already exists at $VENV_DIR"
 fi
 
-# === Activate venv ===
+# =========================
+# Activate virtual environment
+# =========================
 source "${VENV_DIR}/bin/activate"
 
-# === Upgrade pip ===
+# =========================
+# Upgrade pip
+# =========================
 python.exe -m pip install --upgrade pip
 
-# === Install Airflow if missing or wrong version ===
+# =========================
+# Install Apache Airflow
+# =========================
 INSTALLED_AIRFLOW=$(pip show apache-airflow 2>/dev/null | grep Version | awk '{print $2}' || echo "")
 if [ "$INSTALLED_AIRFLOW" != "$AIRFLOW_VERSION" ]; then
     PYTHON_VERSION="$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
@@ -35,7 +50,9 @@ else
     echo "Apache Airflow $AIRFLOW_VERSION is already installed"
 fi
 
-# === Ensure AIRFLOW_HOME and AIRFLOW__CONFIG_FILE exports in activate script ===
+# =========================
+# Configure environment variables
+# =========================
 ACTIVATE_FILE="${VENV_DIR}/bin/activate"
 if ! grep -Fxq "export PYTHONPATH=${PYTHONPATH}" "$ACTIVATE_FILE"; then
     echo "export PYTHONPATH=${PYTHONPATH}" >> "$ACTIVATE_FILE"
@@ -62,7 +79,9 @@ if ! grep -Fxq "export AIRFLOW__WEBSERVER__WEB_SERVER_PORT=8888" "$ACTIVATE_FILE
     echo "Added AIRFLOW__WEBSERVER__WEB_SERVER_PORT export to $ACTIVATE_FILE"
 fi
 
-# === Initialize DB if missing ===
+# =========================
+# Initialize Airflow database
+# =========================
 AIRFLOW_DB_FILE="${AIRFLOW_HOME}/airflow.db"
 if [ ! -f "$AIRFLOW_DB_FILE" ]; then
     mkdir -p "$AIRFLOW_HOME"
@@ -72,6 +91,9 @@ else
     echo "Airflow database already exists at $AIRFLOW_DB_FILE"
 fi
 
+# =========================
+# Setup complete
+# =========================
 echo "Setup complete! Activate your venv with:"
 echo "source ${VENV_DIR}/bin/activate"
 echo "Then run Airflow commands like 'airflow api-server --host 0.0.0.0 --port 8888'"

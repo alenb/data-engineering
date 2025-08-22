@@ -1,25 +1,26 @@
+"""
+Gold Curated Layer - Business Analysis Tables
+
+This module creates specialised analytical tables optimized for specific business
+questions, including station peak analysis, network trends, and high load incidents.
+"""
+
 from scripts.base import Base
 from pyspark.sql.window import Window
 from pyspark.sql import functions as F
 
-"""
-Gold curated tables.
-This module creates curated tables for analysis of passenger flow and station performance.
-"""
-
 
 class GoldCurated(Base):
+    """Gold curated processor for specialised business analysis tables."""
+
     def __init__(self):
         super().__init__()
         self.station_peaks = None
         self.network_trend = None
         self.high_load_incidents = None
 
-    """
-    Run the Gold curated tables.
-    """
-
-    def run(self):
+    def run(self) -> None:
+        """Execute the complete Gold curated processing pipeline."""
         self.logger.info("Running Gold curated tables")
         self.create_spark()
         self.load_tables()
@@ -28,11 +29,8 @@ class GoldCurated(Base):
         self.create_high_load_incidents()
         self.process()
 
-    """
-    Load the necessary tables for Gold curated processing.
-    """
-
-    def load_tables(self):
+    def load_tables(self) -> None:
+        """Load required Gold layer tables and create temporary views."""
         self.logger.info("Loading tables for Gold curated processing")
         fact_train = self.spark.read.format("delta").load(
             f"{self.config.GOLD_DATA_PATH}/fact_train"
@@ -52,11 +50,13 @@ class GoldCurated(Base):
         dim_time_bucket.createOrReplaceTempView("dim_time_bucket")
         dim_date.createOrReplaceTempView("dim_date")
 
-    """
-    Create station AM/PM peaks table which allows for analysis of passenger flow during peak hours.
-    """
+    def create_station_peaks(self) -> None:
+        """
+        Create station AM/PM peaks analysis table.
 
-    def create_station_peaks(self):
+        Analyzes passenger flow during peak hours (7-9 AM and 4-6 PM)
+        for each station on normal weekdays.
+        """
         self.logger.info("Calculating station peaks")
         self.station_peaks = self.spark.sql(
             """
@@ -96,11 +96,13 @@ class GoldCurated(Base):
             """
         )
 
-    """
-    Create network trend table which allows for analysis of passenger flow over time.
-    """
+    def create_network_trend(self) -> None:
+        """
+        Create network trend analysis table.
 
-    def create_network_trend(self):
+        Tracks daily passenger volumes across the entire network with
+        rolling averages and anomaly detection flags.
+        """
         self.logger.info("Calculating network trend")
 
         daily_totals = self.spark.sql(
@@ -157,11 +159,13 @@ class GoldCurated(Base):
         # Drop helper column
         self.network_trend = self.network_trend.drop("month")
 
-    """
-    Create high load incidents table which allows for analysis of incidents at stations with high passenger loads.
-    """
+    def create_high_load_incidents(self) -> None:
+        """
+        Create high load incidents analysis table.
 
-    def create_high_load_incidents(self):
+        Identifies stations and dates with passenger loads exceeding
+        75% of the maximum observed load across the network.
+        """
         self.logger.info("Identifying high load incidents")
         self.high_load_incidents = self.spark.sql(
             """
@@ -185,11 +189,8 @@ class GoldCurated(Base):
             """
         )
 
-    """
-    Process the DataFrame and store the results in Delta format.
-    """
-
-    def process(self):
+    def process(self) -> None:
+        """Save all curated analysis tables as Delta format."""
         self.logger.info("Saving gold curated data")
         self.station_peaks.write.format("delta").mode("overwrite").save(
             f"{self.config.GOLD_DATA_PATH}/station_peaks"
@@ -201,5 +202,4 @@ class GoldCurated(Base):
             f"{self.config.GOLD_DATA_PATH}/high_load_incidents"
         )
 
-        # Stop the Spark session
         self.spark.stop()
