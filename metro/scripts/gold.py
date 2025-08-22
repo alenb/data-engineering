@@ -25,6 +25,7 @@ class Gold(Base):
     """
 
     def run(self):
+        self.logger.info("Running Gold layer")
         self.create_spark()
         self.load_data()
         self.create_dim_date()
@@ -208,7 +209,7 @@ class Gold(Base):
                     F.col("Direction") == "U",
                     "Travelling towards Flinders Street Station",
                 )
-                .F.when(
+                .when(
                     F.col("Direction") == "D",
                     "Travelling away from Flinders Street Station",
                 )
@@ -366,11 +367,3 @@ class Gold(Base):
 
         # Stop the Spark session
         self.spark.stop()
-
-
-"""
-Entry point for the script
-"""
-if __name__ == "__main__":
-    gold = Gold()
-    gold.run()

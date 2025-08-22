@@ -1,7 +1,6 @@
 from scripts.base import Base
 from pyspark.sql.window import Window
 from pyspark.sql import functions as F
-from pyspark.sql.types import LongType
 
 """
 Gold curated tables.
@@ -21,6 +20,7 @@ class GoldCurated(Base):
     """
 
     def run(self):
+        self.logger.info("Running Gold curated tables")
         self.create_spark()
         self.load_tables()
         self.create_station_peaks()
@@ -203,11 +203,3 @@ class GoldCurated(Base):
 
         # Stop the Spark session
         self.spark.stop()
-
-
-"""
-Entry point for the script
-"""
-if __name__ == "__main__":
-    curated = GoldCurated()
-    curated.run()

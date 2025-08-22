@@ -18,6 +18,7 @@ class Silver(Base):
     """
 
     def run(self):
+        self.logger.info("Running Silver layer")
         self.create_spark()
         self.load_data()
         self.clean_negative_passenger_counts()
@@ -235,11 +236,3 @@ class Silver(Base):
 
         # Stop the Spark session
         self.spark.stop()
-
-
-"""
-Entry point for the script
-"""
-if __name__ == "__main__":
-    silver = Silver()
-    silver.run()

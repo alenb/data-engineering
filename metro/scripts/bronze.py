@@ -16,6 +16,7 @@ class Bronze(Base):
     """
 
     def run(self):
+        self.logger.info("Running Bronze layer")
         self.get_train_patronage()
 
     """
@@ -54,11 +55,3 @@ class Bronze(Base):
 
         else:
             raise ValueError("Train service passenger counts data could not be loaded.")
-
-
-"""
-Entry point for the script
-"""
-if __name__ == "__main__":
-    bronze = Bronze()
-    bronze.run()

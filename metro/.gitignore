@@ -1,6 +1,14 @@
 .vscode/
+
+.env
+
 venv/
+venv-airflow/
 __pycache__/
+
+airflow/logs/*
+airflow/plugins/*
+airflow/*.*
 
 data/bronze/*
 data/silver/*
@@ -9,5 +17,4 @@ data/gold/*
 blog/
 docs/tasks/
 powerbi/
-
-.env
+logs/
