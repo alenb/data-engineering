@@ -14,6 +14,8 @@ data/bronze/*
 data/silver/*
 data/gold/*
 
+tests/fixtures/
+
 blog/
 docs/tasks/
 powerbi/

@@ -42,32 +42,45 @@ class Silver(Base):
     def clean_negative_passenger_counts(self) -> None:
         """Replace negative passenger counts with null values for data quality."""
         self.logger.info("Cleaning negative counts")
-        self.df = (
-            self.df.withColumn(
+        
+        # Get list of available columns
+        available_columns = self.df.columns
+        
+        # Clean Passenger_Boardings if it exists
+        if "Passenger_Boardings" in available_columns:
+            self.df = self.df.withColumn(
                 "Passenger_Boardings",
                 F.when(F.col("Passenger_Boardings") < 0, None).otherwise(
                     F.col("Passenger_Boardings")
                 ),
             )
-            .withColumn(
+        
+        # Clean Passenger_Alightings if it exists
+        if "Passenger_Alightings" in available_columns:
+            self.df = self.df.withColumn(
                 "Passenger_Alightings",
                 F.when(F.col("Passenger_Alightings") < 0, None).otherwise(
                     F.col("Passenger_Alightings")
                 ),
             )
-            .withColumn(
+        
+        # Clean Passenger_Arrival_Load if it exists
+        if "Passenger_Arrival_Load" in available_columns:
+            self.df = self.df.withColumn(
                 "Passenger_Arrival_Load",
                 F.when(F.col("Passenger_Arrival_Load") < 0, None).otherwise(
                     F.col("Passenger_Arrival_Load")
                 ),
             )
-            .withColumn(
+        
+        # Clean Passenger_Departure_Load if it exists
+        if "Passenger_Departure_Load" in available_columns:
+            self.df = self.df.withColumn(
                 "Passenger_Departure_Load",
                 F.when(F.col("Passenger_Departure_Load") < 0, None).otherwise(
                     F.col("Passenger_Departure_Load")
                 ),
             )
-        )
 
     def fix_arrival_departure_times(self) -> None:
         """
