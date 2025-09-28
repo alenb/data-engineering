@@ -7,7 +7,7 @@ This space is a work in progress, and honestly, that's part of the fun. I starte
 ## Portfolio Projects
 
 ### Metro
-The Metro project is my hands-on exploration of public transit data. Here, I've built ETL pipelines to ingest, clean, and transform raw train and station data, then modeled it for analytics and reporting. I use tools like Apache Spark and Delta Lake to process large datasets, and I will be using Power BI to visualise patronage trends and operational insights. This project is a practical showcase of how I approach real-world data engineering challenges—from wrangling CSVs to orchestrating workflows and surfacing insights for decision-makers.
+The Metro project is my hands-on exploration of public transit data. Here, I've built ETL pipelines to ingest, clean, and transform raw train and station data, then modeled it for analytics and reporting. I use tools like Apache Spark and Delta Lake to process large datasets, and I will be using Power BI to visualise patronage trends and operational insights. This project is a practical showcase of how I approach real-world data engineering challenges from wrangling CSVs to orchestrating workflows and surfacing insights for decision-makers.
 
 **Portfolio Items:**
 - Metro: Public transit data engineering and analytics (ETL, Spark, Delta Lake, Power BI)
